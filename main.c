@@ -3,32 +3,39 @@
 
 int main()
 {
+    // Create a new vector
     vector_t *vec = vector_create();
+    if (NULL == vec) {
+        fprintf(stderr, "Mem alloc for vector failed!\n");
+        return -1;
+    }
+
+    if (vector_push_back(vec, 3) != VEC_OK) {
+        printf("error\n");
+    }
+    if (vector_push_back(vec, 1) != VEC_OK) {
+        printf("error\n");
+    }
+    if (vector_push_back(vec, 2) != VEC_OK) {
+        printf("error\n");
+    }
+    if (vector_push_back(vec, 4) != VEC_OK) {
+        printf("error\n");
+    }
+    if (vector_push_back(vec, 5) != VEC_OK) {
+        printf("error\n");
+    }
+
     int x;
-    int y;
-    int z;
-
-    vector_push_back(vec, 2435);
-    vector_push_back(vec, 1000);
-
-    if (vector_get(vec, 0, &x) != VEC_OK) {
-        printf("Error");
-        return -1;
+    for (size_t i = 0; i < 5; i++) {
+        if (vector_get(vec, i, &x) != VEC_OK) {
+            printf("read error\n");
+        } else {
+            printf("vec->data[i]: %d\n", x);
+        }
     }
-    fprintf(stdout, "vec[0]: %d\n", x);
 
-    if (vector_get(vec, 1, &y) != VEC_OK) {
-        printf("Error");
-        return -1;
-    }
-    fprintf(stdout, "vec[1]: %d\n", y);
-
-    if (vector_get(vec, 2, &z) != VEC_OK) {
-        printf("Error");
-        return -1;
-    }
-    fprintf(stdout, "vec[2]: %d\n", z);
-
+    // Destroy the vector
     vector_destroy(vec);
 
     return 0;
