@@ -65,6 +65,22 @@ vector_status_t vector_size(const vector_t *vec, size_t *output)
 }
 
 /**
+  * @brief   Get vector capacity.
+  * @param   vec     Pointer to the vector.
+  * @param   output  Address of the output variable.
+  * @retval  vector_status_t  VEC_OK on success, VEC_ERR_NULL on failure.
+  */
+vector_status_t vector_capacity(const vector_t *vec, size_t *output)
+{
+    if (NULL == vec || NULL == output) {
+        return VEC_ERR_NULL;
+    }
+
+    *output = vec->capacity;
+    return VEC_OK;
+}
+
+/**
   * @brief   Push new element at the end of the data block.
   * @param   vec    Pointer to the vector.
   * @param   value  Value that will be stored in vector data.

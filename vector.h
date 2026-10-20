@@ -21,10 +21,8 @@ typedef enum {
 
 /* Exported functions prototypes ---------------------------------------------*/
 vector_t *vector_create(void);
-
 vector_status_t vector_size(const vector_t *vec, size_t *output);
-// vector_status_t vector_capacity(const vector_t *vec, size_t *output);
-
+vector_status_t vector_capacity(const vector_t *vec, size_t *output);
 vector_status_t vector_push_back(vector_t *vec, int value);
 vector_status_t vector_get(const vector_t *vec, const size_t index, int *output);
 void vector_destroy(vector_t *vec);
