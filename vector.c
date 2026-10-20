@@ -49,6 +49,38 @@ vector_t *vector_create(void)
 }
 
 /**
+  * @brief   Get vector size.
+  * @param   vec     Pointer to the vector.
+  * @param   output  Address of the output variable.
+  * @retval  vector_status_t  VEC_OK on success, VEC_ERR_NULL on failure.
+  */
+vector_status_t vector_size(const vector_t *vec, size_t *output)
+{
+    if (NULL == vec || NULL == output) {
+        return VEC_ERR_NULL;
+    }
+
+    *output = vec->size;
+    return VEC_OK;
+}
+
+/**
+  * @brief   Get vector capacity.
+  * @param   vec     Pointer to the vector.
+  * @param   output  Address of the output variable.
+  * @retval  vector_status_t  VEC_OK on success, VEC_ERR_NULL on failure.
+  */
+vector_status_t vector_capacity(const vector_t *vec, size_t *output)
+{
+    if (NULL == vec || NULL == output) {
+        return VEC_ERR_NULL;
+    }
+
+    *output = vec->capacity;
+    return VEC_OK;
+}
+
+/**
   * @brief   Push new element at the end of the data block.
   * @param   vec    Pointer to the vector.
   * @param   value  Value that will be stored in vector data.
@@ -56,7 +88,6 @@ vector_t *vector_create(void)
   */
 vector_status_t vector_push_back(vector_t *vec, int value)
 {
-    /* vector does not exist */
     if (NULL == vec) {
         return VEC_ERR_NULL;
     }
@@ -82,12 +113,10 @@ vector_status_t vector_push_back(vector_t *vec, int value)
   */
 vector_status_t vector_get(const vector_t *vec, const size_t index, int *output)
 {
-    /* vector or output pointer does not exist */
     if (NULL == vec || NULL == output) {
         return VEC_ERR_NULL;
     }
 
-    /* given index is outside of allowed range */
     if (index >= vec->size) {
         return VEC_ERR_RANGE;
     }
@@ -102,16 +131,13 @@ vector_status_t vector_get(const vector_t *vec, const size_t index, int *output)
   */
 void vector_destroy(vector_t *vec)
 {
-    /* vector does not exist */
     if (NULL == vec) {
         return;
     }
-
-    /* data pointer exists */
+    
     if (NULL != vec->data) {
         free(vec->data);
     }
 
-    /* free the vector */
     free(vec);
 }
