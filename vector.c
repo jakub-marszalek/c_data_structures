@@ -22,10 +22,6 @@ struct vector_t {
 };
 
 /* Public functions ----------------------------------------------------------*/
-/**
-  * @brief   Create new vector.
-  * @retval  vector_t*  Pointer to vector struct on success, NULL on failure.
-  */
 vector_t *vector_create(void)
 {
     /* vector structure */
@@ -48,12 +44,6 @@ vector_t *vector_create(void)
     return vec;
 }
 
-/**
-  * @brief   Get vector size.
-  * @param   vec     Pointer to the vector.
-  * @param   output  Address of the output variable.
-  * @retval  vector_status_t  VEC_OK on success, VEC_ERR_NULL on failure.
-  */
 vector_status_t vector_size(const vector_t *vec, size_t *output)
 {
     if (NULL == vec || NULL == output) {
@@ -64,12 +54,6 @@ vector_status_t vector_size(const vector_t *vec, size_t *output)
     return VEC_OK;
 }
 
-/**
-  * @brief   Get vector capacity.
-  * @param   vec     Pointer to the vector.
-  * @param   output  Address of the output variable.
-  * @retval  vector_status_t  VEC_OK on success, VEC_ERR_NULL on failure.
-  */
 vector_status_t vector_capacity(const vector_t *vec, size_t *output)
 {
     if (NULL == vec || NULL == output) {
@@ -80,19 +64,13 @@ vector_status_t vector_capacity(const vector_t *vec, size_t *output)
     return VEC_OK;
 }
 
-/**
-  * @brief   Push new element at the end of the data block.
-  * @param   vec    Pointer to the vector.
-  * @param   value  Value that will be stored in vector data.
-  * @retval  vector_status_t  VEC_OK on success, VEC_ERR_NULL or VEC_ERR_NOMEM on failure.
-  */
 vector_status_t vector_push_back(vector_t *vec, int value)
 {
     if (NULL == vec) {
         return VEC_ERR_NULL;
     }
 
-    /* there is free space in vector */
+    /* there is free space in vector - no reallocation */
     if (vec->size < vec->capacity) {
         vec->data[vec->size] = value;
         vec->size++;
@@ -104,13 +82,6 @@ vector_status_t vector_push_back(vector_t *vec, int value)
     return VEC_ERR_NOMEM;
 }
 
-/**
-  * @brief   Get vector data by index.
-  * @param   vec     Pointer to the vector.
-  * @param   index   Index of vector data field.
-  * @param   output  Address of the output variable.
-  * @retval  vector_status_t  VEC_OK on success, VEC_ERR_NULL or VEC_ERR_RANGE on failure.
-  */
 vector_status_t vector_get(const vector_t *vec, const size_t index, int *output)
 {
     if (NULL == vec || NULL == output) {
@@ -125,19 +96,15 @@ vector_status_t vector_get(const vector_t *vec, const size_t index, int *output)
     return VEC_OK;
 }
 
-/**
-  * @brief  Destroy a vector.
-  * @param  vec  Pointer to the vector to destroy.
-  */
 void vector_destroy(vector_t *vec)
 {
     if (NULL == vec) {
         return;
     }
-    
+
     if (NULL != vec->data) {
         free(vec->data);
     }
-
+    
     free(vec);
 }
