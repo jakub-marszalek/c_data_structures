@@ -1,4 +1,11 @@
-// Copyright
+/*
+ * Copyright (c) 2026 Jakub Marszałek
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * This software is provided "as is", without warranty of any kind.
+ * See the LICENSE file for details.
+ */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef VECTOR_H

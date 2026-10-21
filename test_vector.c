@@ -1,4 +1,11 @@
-// Copyright
+/*
+ * Copyright (c) 2026 Jakub Marszałek
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * This software is provided "as is", without warranty of any kind.
+ * See the LICENSE file for details.
+ */
 
 /* Private includes ----------------------------------------------------------*/
 #include <stdio.h>
@@ -12,6 +19,8 @@
 #define INIT_VEC_SIZE       (0)
 #define INIT_VEC_CAPACITY   (4)
 #define MANY_TRIES_SIZE_T   (100000)
+#define VEC_A_ARR_SIZE      (3)
+#define VEC_B_ARR_SIZE      (2)
 
 /* Create destroy tests ------------------------------------------------------*/
 /**
@@ -40,6 +49,7 @@ static void test_many_create_destroy(void)
 
         /* free the vector */
         vector_destroy(vec);
+        vec = NULL;
     }
 }
 
@@ -99,6 +109,7 @@ static void test_null_vector_size_capacity(void)
     
     /* free the vector */
     vector_destroy(vec);
+    vec = NULL;
 }
 
 /**
@@ -127,6 +138,7 @@ static void test_vector_size_capacity_from_empty(void)
 
     /* free the vector */
     vector_destroy(vec);
+    vec = NULL;
 }
 
 /**
@@ -191,6 +203,7 @@ static void test_vector_size_capacity_after_pushes(void)
 
     /* free the vector */
     vector_destroy(vec);
+    vec = NULL;
 }
 
 /**
@@ -258,6 +271,7 @@ static void test_vector_push_one_element(void)
 
     /* free the vector */
     vector_destroy(vec);
+    vec = NULL;
 }
 
 /**
@@ -308,6 +322,7 @@ static void test_vector_push_until_full(void)
 
     /* free the vector*/
     vector_destroy(vec);
+    vec = NULL;
 }
 
 /**
@@ -365,6 +380,7 @@ static void test_vector_push_limits(void)
 
     /* free the vector */
     vector_destroy(vec);
+    vec = NULL;
 }
 
 /* Get tests -----------------------------------------------------------------*/
@@ -414,6 +430,7 @@ static void test_null_vector_get(void)
 
     /* free the vector */
     vector_destroy(vec);
+    vec = NULL;
 }
 
 /**
@@ -455,6 +472,7 @@ static void test_vector_get_one_element(void)
     
     /* free the vector */
     vector_destroy(vec);
+    vec = NULL;
 }
 
 /**
@@ -497,6 +515,7 @@ static void test_vector_get_from_empty(void)
 
     /* free the vector */
     vector_destroy(vec);
+    vec = NULL;
 }
 
 /**
@@ -535,6 +554,142 @@ static void test_vector_get_after_push_err(void)
 
     /* free the vector */
     vector_destroy(vec);
+    vec = NULL;
+}
+
+/**
+  * @brief Test independence of two vectors.
+  */
+static void test_two_vectors(void)
+{
+    vector_t *vec_a = vector_create();
+    vector_t *vec_b = vector_create();
+
+    /* check if vectors were created successfully */
+    assert(NULL != vec_a && NULL != vec_b);
+    assert(vec_a != vec_b);
+
+    vector_status_t status_a = VEC_ERR_NOMEM;
+    vector_status_t status_b = VEC_ERR_NOMEM;
+    size_t size_a            = INIT_SIZE_T;
+    size_t size_b            = INIT_SIZE_T;
+    size_t capacity_a        = INIT_SIZE_T;
+    size_t capacity_b        = INIT_SIZE_T;
+
+    /* check if both vectors are empty */
+    status_a = vector_size(vec_a, &size_a);
+    status_b = vector_size(vec_b, &size_b);
+    assert(status_a == VEC_OK && status_b == VEC_OK);
+    assert(size_a == INIT_VEC_SIZE && size_b == INIT_VEC_SIZE);
+
+    /* check if initial capacity is correct */
+    status_a = vector_capacity(vec_a, &capacity_a);
+    status_b = vector_capacity(vec_b, &capacity_b);
+    assert(status_a == VEC_OK && status_b == VEC_OK);
+    assert(capacity_a == INIT_VEC_CAPACITY && capacity_b == INIT_VEC_CAPACITY);
+
+    /* fill vectors with data */
+    int vec_a_data[VEC_A_ARR_SIZE] = {23, 46, 12};
+    int vec_b_data[VEC_B_ARR_SIZE] = {-4, 29};
+
+    for (size_t i = 0; i < VEC_A_ARR_SIZE; i++) {
+        status_a = vector_push_back(vec_a, vec_a_data[i]);
+        assert(status_a == VEC_OK);
+    }
+    status_a = vector_size(vec_a, &size_a);
+    assert(status_a == VEC_OK);
+    assert(size_a == VEC_A_ARR_SIZE);
+    status_a = VEC_ERR_NOMEM;
+
+    for (size_t i = 0; i < VEC_B_ARR_SIZE; i++) {
+        status_b = vector_push_back(vec_b, vec_b_data[i]);
+        assert(status_b == VEC_OK);
+    }
+    status_b = vector_size(vec_b, &size_b);
+    assert(status_b == VEC_OK);
+    assert(size_b == VEC_B_ARR_SIZE);
+    status_b = VEC_ERR_NOMEM;
+
+    /* adding data to B must not change size of A */
+    status_a = vector_size(vec_a, &size_a);
+    assert(status_a == VEC_OK);
+    assert(size_a == VEC_A_ARR_SIZE);
+    status_a = VEC_ERR_NOMEM;
+
+    /* read data from vectors */
+    int data_a = INIT_RES_VALUE_INT;
+    int data_b = INIT_RES_VALUE_INT;
+
+    for (size_t i = 0; i < VEC_A_ARR_SIZE; i++) {
+        status_a = vector_get(vec_a, i, &data_a);
+        assert(status_a == VEC_OK);
+        assert(data_a == vec_a_data[i]);
+    }
+    status_a = VEC_ERR_NOMEM;
+    data_a   = INIT_RES_VALUE_INT;
+
+    for (size_t i = 0; i < VEC_B_ARR_SIZE; i++) {
+        status_b = vector_get(vec_b, i, &data_b);
+        assert(status_b == VEC_OK);
+        assert(data_b == vec_b_data[i]);
+    }
+    status_b = VEC_ERR_NOMEM;
+    data_b   = INIT_RES_VALUE_INT;
+
+    /* check both vectors boundaries */
+    /* vector A */
+    status_a = vector_get(vec_a, 0, &data_a);
+    assert(status_a == VEC_OK);
+
+    status_a = vector_get(vec_a, 1, &data_a);
+    assert(status_a == VEC_OK);
+
+    status_a = vector_get(vec_a, 2, &data_a);
+    assert(status_a == VEC_OK);
+
+    status_a = vector_get(vec_a, 3, &data_a);   /* 3 elements inside - should return range err */
+    assert(status_a == VEC_ERR_RANGE);
+
+    /* vector B */
+    status_b = vector_get(vec_b, 0, &data_b);
+    assert(status_b == VEC_OK);
+
+    status_b = vector_get(vec_b, 1, &data_b);
+    assert(status_b == VEC_OK);
+
+    /* 2 elements inside - should return range err */
+    status_b = vector_get(vec_b, 2, &data_b);
+    assert(status_b == VEC_ERR_RANGE);
+
+    status_b = vector_get(vec_b, 3, &data_b);
+    assert(status_b == VEC_ERR_RANGE);
+
+    /* free A and try to use B */
+    status_b       = VEC_ERR_NOMEM;
+    data_b         = INIT_RES_VALUE_INT;
+    int test_value = 888;
+    
+    vector_destroy(vec_a);  /* free vector A */
+    vec_a = NULL;
+
+    status_b = vector_push_back(vec_b, test_value);
+    assert(status_b == VEC_OK);
+
+    status_b = vector_get(vec_b, 2, &data_b);
+    assert(status_b == VEC_OK);
+    assert(data_b == test_value);
+
+    status_b = vector_size(vec_b, &size_b);
+    assert(status_b == VEC_OK);
+    assert(size_b == 3);
+
+    status_b = vector_capacity(vec_b, &capacity_b);
+    assert(status_b == VEC_OK);
+    assert(capacity_b == INIT_VEC_CAPACITY);
+
+    /* free vector B */
+    vector_destroy(vec_b);
+    vec_b = NULL;
 }
 
 int main(void)
@@ -559,6 +714,9 @@ int main(void)
     test_vector_get_one_element();
     test_vector_get_from_empty();
     test_vector_get_after_push_err();
+
+    /* Two vectors test */
+    test_two_vectors();
 
     return 0;
 }
