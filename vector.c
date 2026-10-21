@@ -1,4 +1,11 @@
-// Copyright
+/*
+ * Copyright (c) 2026 Jakub Marszałek
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * This software is provided "as is", without warranty of any kind.
+ * See the LICENSE file for details.
+ */
 
 /* Private includes ----------------------------------------------------------*/
 #include <stdlib.h>
@@ -105,6 +112,6 @@ void vector_destroy(vector_t *vec)
     if (NULL != vec->data) {
         free(vec->data);
     }
-    
+
     free(vec);
 }
