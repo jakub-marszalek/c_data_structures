@@ -9,6 +9,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 #include <stdlib.h>
+#include <stdint.h>
 #include "vector.h"
 
 /* Private defines -----------------------------------------------------------*/
@@ -31,20 +32,17 @@ struct vector_t {
 /* Public functions ----------------------------------------------------------*/
 vector_t *vector_create(void)
 {
-    /* vector structure */
     vector_t *vec = malloc(sizeof(*vec));
     if (NULL == vec) {
         return NULL;
     }
 
-    /* vector data */
     vec->data = malloc(V_INIT_CAPACITY * sizeof(int));
     if (NULL == vec->data) {
         free(vec);
         return NULL;
     }
 
-    /* assign initial values */
     vec->size     = V_INIT_SIZE;
     vec->capacity = V_INIT_CAPACITY;
 
@@ -77,16 +75,26 @@ vector_status_t vector_push_back(vector_t *vec, int value)
         return VEC_ERR_NULL;
     }
 
-    /* there is free space in vector - no reallocation */
-    if (vec->size < vec->capacity) {
-        vec->data[vec->size] = value;
-        vec->size++;
-        return VEC_OK;
+    /* no more space in vector - reallocation needed */
+    if (vec->size >= vec->capacity) {
+        if (vec->capacity > SIZE_MAX / sizeof(int) / V_CAP_MULTIPLIER) {
+            return VEC_ERR_NOMEM;
+        }
+
+        int *temp = realloc(vec->data, vec->capacity * sizeof(int) * V_CAP_MULTIPLIER);
+        if (NULL == temp) {
+            return VEC_ERR_NOMEM;
+        }
+        
+        /* assign data to the new pointer and increase capacity */
+        vec->data = temp;
+        vec->capacity *= V_CAP_MULTIPLIER;
     }
 
-    // else: THERE IS NO SPACE LEFT IN VECTOR - NEEDS MEMORY REALLOCATION
+    vec->data[vec->size] = value;
+    vec->size++;
 
-    return VEC_ERR_NOMEM;
+    return VEC_OK;
 }
 
 vector_status_t vector_get(const vector_t *vec, const size_t index, int *output)
