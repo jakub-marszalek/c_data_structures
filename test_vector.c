@@ -14,13 +14,25 @@
 #include "vector.h"
 
 /* Private defines -----------------------------------------------------------*/
+#define CAP_MULTIPLIER      (2)
 #define INIT_RES_VALUE_INT  (-999)
 #define INIT_SIZE_T         (99999)
 #define INIT_VEC_SIZE       (0)
 #define INIT_VEC_CAPACITY   (4)
+#define MANY_PUSHES_SIZE_T  (98909)
 #define MANY_TRIES_SIZE_T   (100000)
 #define VEC_A_ARR_SIZE      (3)
 #define VEC_B_ARR_SIZE      (2)
+
+/* Helpers -------------------------------------------------------------------*/
+static size_t expected_capacity(size_t size)
+{
+    size_t cap = INIT_VEC_CAPACITY;
+    while (cap < size) {
+        cap *= CAP_MULTIPLIER;
+    }
+    return cap;
+}
 
 /* Create destroy tests ------------------------------------------------------*/
 /**
@@ -142,9 +154,9 @@ static void test_vector_size_capacity_from_empty(void)
 }
 
 /**
-  * @brief  Test vector size/capacity after many push/get failures.
-*/
-static void test_vector_size_capacity_after_pushes(void)
+  * @brief  Test vector size/capacity and data after many pushes.
+  */
+static void test_vector_after_many_pushes(void)
 {
     /* initialize vector */
     vector_t *vec = vector_create();
@@ -157,49 +169,45 @@ static void test_vector_size_capacity_after_pushes(void)
     
     status = vector_size(vec, &size);
     assert(status == VEC_OK);
-    assert(size == 0);
+    assert(size == INIT_VEC_SIZE);
 
     status = vector_capacity(vec, &capacity);
     assert(status == VEC_OK);
     assert(capacity == INIT_VEC_CAPACITY);
 
-    /* fill vector with values and read size changes */
-    size     = 0;
-    capacity = INIT_VEC_CAPACITY;
+    status   = VEC_ERR_NOMEM; 
+    size     = INIT_SIZE_T;
+    capacity = INIT_SIZE_T;
 
-    size_t counter = 0;
-    for (size_t i = 0; i < 4; i++) {
-        status = vector_push_back(vec, 5);
+    /* push many values: size grows by 1, capacity grows only when needed */
+    for (size_t i = 0; i < MANY_PUSHES_SIZE_T; i++) {
+        status = vector_push_back(vec, (int)i);
         assert(status == VEC_OK);
 
-        counter++;
         status = vector_size(vec, &size);
         assert(status == VEC_OK);
-        assert(size == counter);
+        assert(size == i + 1);
 
         status = vector_capacity(vec, &capacity);
         assert(status == VEC_OK);
-        assert(capacity == INIT_VEC_CAPACITY);
+        assert(capacity == expected_capacity(i + 1));
     }
+    status = VEC_ERR_NOMEM;
 
-    /* try to read size after many push/get failures */
-    for (size_t i = 0; i < MANY_TRIES_SIZE_T; i++) {
-        status = vector_push_back(vec, 78);
-        assert(status == VEC_ERR_NOMEM);
-
+    /* all data must survive every reallocation */
+    for (size_t i = 0; i < MANY_PUSHES_SIZE_T; i++) {
         int value = INIT_RES_VALUE_INT;
-        status = vector_get(vec, 98890, &value);
-        assert(status == VEC_ERR_RANGE);
-        assert(value == INIT_RES_VALUE_INT);
-
-        status = vector_size(vec, &size);
+        status = vector_get(vec, i, &value);
         assert(status == VEC_OK);
-        assert(size == counter);
-
-        status = vector_capacity(vec, &capacity);
-        assert(status == VEC_OK);
-        assert(capacity == INIT_VEC_CAPACITY);
+        assert(value == (int)i);
     }
+    status = VEC_ERR_NOMEM;
+
+    /* try to get out of range - output should be untouched */
+    int value = INIT_RES_VALUE_INT;
+    status = vector_get(vec, MANY_PUSHES_SIZE_T, &value);
+    assert(status == VEC_ERR_RANGE);
+    assert(value == INIT_RES_VALUE_INT);
 
     /* free the vector */
     vector_destroy(vec);
@@ -233,15 +241,15 @@ static void test_vector_push_one_element(void)
     vector_t *vec = vector_create();
     assert(NULL != vec);
 
-    int test_value = 56;
     vector_status_t status = VEC_ERR_NOMEM;
-    size_t size     = INIT_SIZE_T;
-    size_t capacity = INIT_SIZE_T;
+    size_t size            = INIT_SIZE_T;
+    size_t capacity        = INIT_SIZE_T;
+    int test_value         = 56;
 
     /* check vector initial size */
     status = vector_size(vec, &size);
     assert(status == VEC_OK);
-    assert(size == 0);
+    assert(size == INIT_VEC_SIZE);
 
     status = vector_capacity(vec, &capacity);
     assert(status == VEC_OK);
@@ -252,22 +260,26 @@ static void test_vector_push_one_element(void)
     assert(status == VEC_OK);
     
     /* check if pushed element is correct */
-    int res = INIT_RES_VALUE_INT;
-    assert(vector_get(vec, 0, &res) == VEC_OK);
-    assert(res == test_value);
+    int value = INIT_RES_VALUE_INT;
+    assert(vector_get(vec, 0, &value) == VEC_OK);
+    assert(value == test_value);
 
     /* check vector size after one push */
     status = vector_size(vec, &size);
     assert(status == VEC_OK);
     assert(size == 1);
 
+    /* capacity should not change in this scenario */
     status = vector_capacity(vec, &capacity);
     assert(status == VEC_OK);
     assert(capacity == INIT_VEC_CAPACITY);
 
     /* check indexes outside of range */
-    assert(vector_get(vec, 1, &res) == VEC_ERR_RANGE);
-    assert(vector_get(vec, 2, &res) == VEC_ERR_RANGE);
+    status = vector_get(vec, 1, &value); 
+    assert(status == VEC_ERR_RANGE);
+
+    status = vector_get(vec, 2, &value); 
+    assert(status == VEC_ERR_RANGE);
 
     /* free the vector */
     vector_destroy(vec);
@@ -275,50 +287,65 @@ static void test_vector_push_one_element(void)
 }
 
 /**
-  * @brief  Test push elements to vector until it is full.  
+  * @brief  Test exact moment of vector capacity growth: 5th element triggers realloc.
   */
-static void test_vector_push_until_full(void)
+static void test_vector_growth_boundary(void)
 {
     vector_t *vec = vector_create();
     assert(NULL != vec);
 
     /* fill the vector with test values (initial capacity is 4) */
-    int test_values[4] = {46, 12, 9, -4};
-    
+    int test_values[5]     = {46, 12, 9, -4, 67};
     vector_status_t status = VEC_ERR_NOMEM;
-    for (int i = 0; i < 4; i++) {
+    size_t size            = INIT_SIZE_T;
+    size_t capacity        = INIT_SIZE_T;
+    
+    for (int i = 0; i < INIT_VEC_CAPACITY; i++) {
         status = vector_push_back(vec, test_values[i]);
         assert(status == VEC_OK);
     }
 
-    /* try to overflow the vector */
-    status = vector_push_back(vec, test_values[0]);
-    assert(status == VEC_ERR_NOMEM);
-
-    status = vector_push_back(vec, test_values[0]);
-    assert(status == VEC_ERR_NOMEM);
-
-    /* read values from the vector */
-    int res = INIT_RES_VALUE_INT;
-    for (size_t i = 0; i < 4; i++) {
-        assert(vector_get(vec, i, &res) == VEC_OK);
-        assert(res == test_values[i]);
-    }
-
-    /* try to read from outside of the range */
-    assert(vector_get(vec, 4, &res) == VEC_ERR_RANGE);
-
-    /* check vector size */
-    size_t size     = INIT_SIZE_T;
-    size_t capacity = INIT_SIZE_T;
-
-    status = vector_size(vec, &size);
-    assert(status == VEC_OK);
-    assert(size == 4);
-
+    /* check capacity - should not be changed */
     status = vector_capacity(vec, &capacity);
     assert(status == VEC_OK);
     assert(capacity == INIT_VEC_CAPACITY);
+
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == INIT_VEC_CAPACITY);
+    assert(size == capacity);
+
+    /* one more push triggers data block growth */
+    status   = VEC_ERR_NOMEM;
+    size     = INIT_SIZE_T;
+    capacity = INIT_SIZE_T;
+
+    status = vector_push_back(vec, test_values[4]);
+    assert(status == VEC_OK);
+
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == INIT_VEC_CAPACITY * CAP_MULTIPLIER);
+
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == INIT_VEC_CAPACITY + 1);
+
+    /* all data must survive reallocation */
+    int value = INIT_RES_VALUE_INT;
+    status    = VEC_ERR_NOMEM;
+
+    for (size_t i = 0; i < INIT_VEC_CAPACITY + 1; i++) {
+        status = vector_get(vec, i, &value);
+        assert(status == VEC_OK);
+        assert(value == test_values[i]);
+    }
+
+    /* first index out of range still should return an error */
+    value  = INIT_RES_VALUE_INT;
+    status = vector_get(vec, INIT_VEC_CAPACITY + 1, &value);
+    assert(status == VEC_ERR_RANGE);
+    assert(value == INIT_RES_VALUE_INT);
 
     /* free the vector*/
     vector_destroy(vec);
@@ -334,49 +361,37 @@ static void test_vector_push_limits(void)
     assert(NULL != vec);
 
     /* fill the vector with limits values */
+    int test_values[INIT_VEC_CAPACITY] = {0, -1, INT_MAX, INT_MIN};
     vector_status_t status = VEC_ERR_NOMEM;
 
-    status = vector_push_back(vec, 0);
-    assert(status == VEC_OK);
-
-    status = vector_push_back(vec, -1);
-    assert(status == VEC_OK);
-
-    status = vector_push_back(vec, INT_MAX);
-    assert(status == VEC_OK);
-
-    status = vector_push_back(vec, INT_MIN);
-    assert(status == VEC_OK);
+    for (size_t i = 0; i < INIT_VEC_CAPACITY; i++) {
+        status = vector_push_back(vec, test_values[i]);
+        assert(status == VEC_OK);
+    }
 
     /* read all values */
-    int res = INIT_RES_VALUE_INT;
-    status = vector_get(vec, 0, &res);
-    assert(status == VEC_OK);
-    assert(res == 0);
-
-    status = vector_get(vec, 1, &res);
-    assert(status == VEC_OK);
-    assert(res == -1);
-
-    status = vector_get(vec, 2, &res);
-    assert(status == VEC_OK);
-    assert(res == INT_MAX);
-
-    status = vector_get(vec, 3, &res);
-    assert(status == VEC_OK);
-    assert(res == INT_MIN);
+    int value = INIT_RES_VALUE_INT;
+    status    = VEC_ERR_NOMEM;
+    
+    for (size_t i = 0; i < INIT_VEC_CAPACITY; i++) {
+        status = vector_get(vec, i, &value);
+        assert(status == VEC_OK);
+        assert(value == test_values[i]);
+    }
 
     /* check vector size and capacity */
+    status          = VEC_ERR_NOMEM;
     size_t size     = INIT_SIZE_T;
     size_t capacity = INIT_SIZE_T;
 
     status = vector_size(vec, &size);
     assert(status == VEC_OK);
-    assert(size == 4);
+    assert(size == INIT_VEC_CAPACITY);
 
     status = vector_capacity(vec, &capacity);
     assert(status == VEC_OK);
     assert(capacity == INIT_VEC_CAPACITY);
+    assert(capacity == size);
 
     /* free the vector */
     vector_destroy(vec);
@@ -389,13 +404,13 @@ static void test_vector_push_limits(void)
   */
 static void test_null_vector_get(void)
 {
-    int res = INIT_RES_VALUE_INT;
     vector_status_t status = VEC_ERR_NOMEM;
+    int value              = INIT_RES_VALUE_INT;
 
     /* try to read a null pointer */
-    status = vector_get(NULL, 2, &res);
+    status = vector_get(NULL, 0, &value);
     assert(status == VEC_ERR_NULL);
-    assert(res == INIT_RES_VALUE_INT);
+    assert(value == INIT_RES_VALUE_INT);
 
     /* create vector */
     vector_t *vec = vector_create();
@@ -412,9 +427,9 @@ static void test_null_vector_get(void)
     assert(status == VEC_OK);
 
     /* try to get pushed element */
-    status = vector_get(vec, 0, &res);
+    status = vector_get(vec, 0, &value);
     assert(status == VEC_OK);
-    assert(res == test_value);
+    assert(value == test_value);
 
     /* check vector size and capacity */
     size_t size     = INIT_SIZE_T;
@@ -442,20 +457,20 @@ static void test_vector_get_one_element(void)
     assert(NULL != vec);
     
     /* push one element */
-    int test_value = 23;
     vector_status_t status = VEC_ERR_NOMEM;
+    int test_value         = 23;
 
     status = vector_push_back(vec, test_value);
     assert(status == VEC_OK);
 
     /* try to get pushed element */
-    int res = INIT_RES_VALUE_INT;
-    status = vector_get(vec, 0, &res);
+    int value = INIT_RES_VALUE_INT;
+    status = vector_get(vec, 0, &value);
     assert(status == VEC_OK);
-    assert(res == test_value);
+    assert(value == test_value);
 
     /* try to get from the next index */
-    status = vector_get(vec, 1, &res);
+    status = vector_get(vec, 1, &value);
     assert(status == VEC_ERR_RANGE);
 
     /* check vector size and capacity */
@@ -485,29 +500,29 @@ static void test_vector_get_from_empty(void)
     
     /* check vector size and capacity */
     vector_status_t status = VEC_ERR_NOMEM;
-    size_t size     = INIT_SIZE_T;
-    size_t capacity = INIT_SIZE_T;
+    size_t size            = INIT_SIZE_T;
+    size_t capacity        = INIT_SIZE_T;
 
     status = vector_size(vec, &size);
     assert(status == VEC_OK);
-    assert(size == 0);
+    assert(size == INIT_VEC_SIZE);
 
     status = vector_capacity(vec, &capacity);
     assert(status == VEC_OK);
     assert(capacity == INIT_VEC_CAPACITY);
 
     /* try to read from empty vector */
-    int res = INIT_RES_VALUE_INT;
-    for (size_t i = 0; i < 4; i++) {
-        status = vector_get(vec, i, &res);
+    int value = INIT_RES_VALUE_INT;
+    for (size_t i = 0; i < MANY_TRIES_SIZE_T; i++) {
+        status = vector_get(vec, i, &value);
         assert(status == VEC_ERR_RANGE);
-        assert(res == INIT_RES_VALUE_INT);
+        assert(value == INIT_RES_VALUE_INT);
     }
 
     /* check vector size and capacity again */
     status = vector_size(vec, &size);
     assert(status == VEC_OK);
-    assert(size == 0);
+    assert(size == INIT_VEC_SIZE);
 
     status = vector_capacity(vec, &capacity);
     assert(status == VEC_OK);
@@ -518,44 +533,7 @@ static void test_vector_get_from_empty(void)
     vec = NULL;
 }
 
-/**
-  * @brief  Test get after a push error.
-*/
-static void test_vector_get_after_push_err(void)
-{
-    vector_t *vec = vector_create();
-    assert(NULL != vec);
-
-    vector_status_t status = VEC_ERR_NOMEM;
-    int values[4] = {21, 34, 56, 27};
-
-    /* fill the vector */
-    for (size_t i = 0; i < 4; i++) {
-        status = vector_push_back(vec, values[i]);
-        assert(status == VEC_OK);
-    }
-
-    /* vector is already full */
-    status = vector_push_back(vec, 456);
-    assert(status == VEC_ERR_NOMEM);
-
-    /* get after error */
-    int res = INIT_RES_VALUE_INT;
-    for (size_t i = 0; i < 4; i++) {
-        status = vector_get(vec, i, &res);
-        assert(status == VEC_OK);
-        assert(res == values[i]);
-    }
-
-    /* try to read outside of range */
-    status = vector_get(vec, 4, &res);
-    assert(status == VEC_ERR_RANGE);
-    assert(res == values[3]);
-
-    /* free the vector */
-    vector_destroy(vec);
-    vec = NULL;
-}
+/* TODO: test realloc fail */
 
 /**
   * @brief Test independence of two vectors.
@@ -638,30 +616,22 @@ static void test_two_vectors(void)
 
     /* check both vectors boundaries */
     /* vector A */
-    status_a = vector_get(vec_a, 0, &data_a);
-    assert(status_a == VEC_OK);
-
-    status_a = vector_get(vec_a, 1, &data_a);
-    assert(status_a == VEC_OK);
-
-    status_a = vector_get(vec_a, 2, &data_a);
-    assert(status_a == VEC_OK);
-
-    status_a = vector_get(vec_a, 3, &data_a);   /* 3 elements inside - should return range err */
+    for (size_t i = 0; i < VEC_A_ARR_SIZE; i++) {
+        status_a = vector_get(vec_a, i, &data_a);
+        assert(status_a == VEC_OK);
+    }
+    status_a = vector_get(vec_a, VEC_A_ARR_SIZE, &data_a);
     assert(status_a == VEC_ERR_RANGE);
 
     /* vector B */
-    status_b = vector_get(vec_b, 0, &data_b);
-    assert(status_b == VEC_OK);
-
-    status_b = vector_get(vec_b, 1, &data_b);
-    assert(status_b == VEC_OK);
-
-    /* 2 elements inside - should return range err */
-    status_b = vector_get(vec_b, 2, &data_b);
+    for (size_t i = 0; i < VEC_B_ARR_SIZE; i++) {
+        status_b = vector_get(vec_b, i, &data_b);
+        assert(status_b == VEC_OK);
+    }
+    status_b = vector_get(vec_b, VEC_A_ARR_SIZE, &data_b);
     assert(status_b == VEC_ERR_RANGE);
 
-    status_b = vector_get(vec_b, 3, &data_b);
+    status_b = vector_get(vec_b, VEC_A_ARR_SIZE + 1, &data_b);
     assert(status_b == VEC_ERR_RANGE);
 
     /* free A and try to use B */
@@ -701,19 +671,18 @@ int main(void)
     /* Vector get size/capacity tests */
     test_null_vector_size_capacity();
     test_vector_size_capacity_from_empty();
-    test_vector_size_capacity_after_pushes();
+    test_vector_after_many_pushes();
 
     /* Vector push tests */
     test_null_vector_push();
     test_vector_push_one_element();
-    test_vector_push_until_full();
+    test_vector_growth_boundary();
     test_vector_push_limits();
     
     /* Vector get tests */
     test_null_vector_get();
     test_vector_get_one_element();
     test_vector_get_from_empty();
-    test_vector_get_after_push_err();
 
     /* Two vectors test */
     test_two_vectors();

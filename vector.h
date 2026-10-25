@@ -70,7 +70,9 @@ vector_status_t vector_get(const vector_t *vec, const size_t index, int *output)
 /**
   * @brief  Release the vector and its data.
   * @param  vec  Pointer to the vector to destroy.
-  * @note   The pointer is invalid after this call.
+  * @note   The pointer is invalid after this call. The caller is responsible
+  *         for setting it to NULL. Calling this function again with the same
+  *         non-NULL pointer is undefined behavior; calling it with NULL is safe.
   */
 void vector_destroy(vector_t *vec);
 
