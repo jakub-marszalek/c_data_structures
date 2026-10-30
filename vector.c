@@ -97,6 +97,22 @@ vector_status_t vector_push_back(vector_t *vec, int value)
     return VEC_OK;
 }
 
+vector_status_t vector_pop_back(vector_t *vec, int *output)
+{
+    if (NULL == vec || NULL == output) {
+        return VEC_ERR_NULL;
+    }
+
+    if (vec->size == 0) {
+        return VEC_ERR_EMPTY;
+    }
+
+    *output = vec->data[vec->size - 1];
+    vec->size--;
+
+    return VEC_OK;
+}
+
 vector_status_t vector_get(const vector_t *vec, const size_t index, int *output)
 {
     if (NULL == vec || NULL == output) {

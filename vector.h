@@ -21,6 +21,7 @@ typedef struct vector_t vector_t;
   **/
 typedef enum {
     VEC_OK = 0,     /* Operation executed succesfully   */
+    VEC_ERR_EMPTY,  /* Given vector is empty            */
     VEC_ERR_NOMEM,  /* Memory allocation failure        */
     VEC_ERR_NULL,   /* Given a NULL pointer             */
     VEC_ERR_RANGE   /* Given index is outside the range */
@@ -57,6 +58,14 @@ vector_status_t vector_capacity(const vector_t *vec, size_t *output);
   * @retval  vector_status_t  VEC_OK on success, VEC_ERR_NULL or VEC_ERR_NOMEM on failure.
   */
 vector_status_t vector_push_back(vector_t *vec, int value);
+
+/**
+  * @brief   Pop last element of the data block.
+  * @param   vec     Pointer to the vector.
+  * @param   output  Value that has been popped.
+  * @retval  vecotr_status_t  VEC_OK on success, VEC_ERR_NULL or VEC_ERR_EMPTY on failure.
+  */
+vector_status_t vector_pop_back(vector_t *vec, int *output);
 
 /**
   * @brief   Get vector data by index.
