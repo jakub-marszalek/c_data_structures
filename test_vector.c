@@ -23,6 +23,7 @@
 #define MANY_TRIES_SIZE_T   (100000)
 #define VEC_A_ARR_SIZE      (3)
 #define VEC_B_ARR_SIZE      (2)
+#define POP_TEST_VEC_SIZE   (7)
 
 /* Helpers -------------------------------------------------------------------*/
 static size_t expected_capacity(size_t size)
@@ -398,6 +399,368 @@ static void test_vector_push_limits(void)
     vec = NULL;
 }
 
+/* Pop tests -----------------------------------------------------------------*/
+/**
+  * @brief  Test pop back functions with NULL pointers.
+  */
+static void test_null_vector_pop(void)
+{
+    vector_status_t status = VEC_ERR_NOMEM;
+    int value              = INIT_RES_VALUE_INT;
+
+    status = vector_pop_back(NULL, &value);
+    assert(status == VEC_ERR_NULL);
+    assert(value == INIT_RES_VALUE_INT);
+
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+
+    int first_value   = 364344;
+    size_t size       = INIT_SIZE_T;
+    size_t capacity   = INIT_SIZE_T;
+
+    status = vector_push_back(vec, first_value);
+    assert(status == VEC_OK);
+
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == 1);
+
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == INIT_VEC_CAPACITY);
+
+    /* NULL output vector given */
+    status = vector_pop_back(vec, NULL);
+    assert(status == VEC_ERR_NULL);
+
+    /* element inside the vector is untouched */
+    value = INIT_RES_VALUE_INT;
+    status = vector_get(vec, 0, &value);
+    assert(status == VEC_OK);
+    assert(value == first_value);
+
+    size = INIT_SIZE_T;
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == 1);
+
+    capacity = INIT_SIZE_T;
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == INIT_VEC_CAPACITY);
+
+    /* check push/get/pop after null errors */
+    int second_value = 4325532;
+    size             = INIT_SIZE_T;
+
+    /* push element */
+    status = vector_push_back(vec, second_value);
+    assert(status == VEC_OK);
+
+    size = INIT_SIZE_T;
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == 2);
+
+    /* check pushed element */
+    value = INIT_RES_VALUE_INT;
+    status = vector_get(vec, 1, &value);
+    assert(status == VEC_OK);
+    assert(value == second_value);
+
+    /* pop element from vector  */
+    value = INIT_RES_VALUE_INT;
+    status = vector_pop_back(vec, &value);
+    assert(status == VEC_OK);
+    assert(value == second_value);
+    
+    size = INIT_SIZE_T;
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == 1);
+
+    value = INIT_RES_VALUE_INT;
+    status = vector_get(vec, 1, &value);
+    assert(status == VEC_ERR_RANGE);
+    assert(value == INIT_RES_VALUE_INT);
+
+    value = INIT_RES_VALUE_INT;
+    status = vector_get(vec, 0, &value);
+    assert(status == VEC_OK);
+    assert(value == first_value);
+
+    vector_destroy(vec);
+    vec = NULL;
+}
+
+/**
+  * @brief  Test pop one element from vector.
+  */
+static void test_vector_pop_one_element(void)
+{
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+
+    vector_status_t status = VEC_ERR_NOMEM;
+    size_t size            = INIT_SIZE_T;
+    size_t capacity        = INIT_SIZE_T;
+    int last_value         = INIT_RES_VALUE_INT;
+
+    for (size_t i = 0; i < POP_TEST_VEC_SIZE; i++) {
+        status = vector_push_back(vec, (int)i);
+        assert(status == VEC_OK);
+
+        last_value = (int)i;
+    }
+
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == POP_TEST_VEC_SIZE);
+    
+    size_t expected_cap = expected_capacity(POP_TEST_VEC_SIZE);
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == expected_cap);
+
+    /* pop one element */
+    int popped_value = INIT_RES_VALUE_INT;
+
+    status = vector_pop_back(vec, &popped_value);
+    assert(status == VEC_OK);
+    assert(popped_value == last_value);
+
+    /* check size after pop */
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == POP_TEST_VEC_SIZE - 1);
+
+    /* check capacity - should not change after pop */
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == expected_cap);
+
+    /* the popped element is gone; its index is out of range */
+    int value = INIT_RES_VALUE_INT;
+    
+    status = vector_get(vec, POP_TEST_VEC_SIZE - 1, &value);
+    assert(status == VEC_ERR_RANGE);
+    assert(value == INIT_RES_VALUE_INT);
+
+    /* element right before it is untouched */
+    status = vector_get(vec, POP_TEST_VEC_SIZE - 2, &value);
+    assert(status == VEC_OK);
+    assert(value == last_value - 1);
+
+    vector_destroy(vec);
+    vec = NULL;
+}
+
+/**
+  * @brief  Test pop from empty vector.
+  */
+static void test_vector_pop_from_empty(void)
+{
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+
+    vector_status_t status = VEC_ERR_NOMEM;
+    size_t size            = INIT_SIZE_T;
+    size_t capacity        = INIT_SIZE_T;
+    int popped_value       = INIT_RES_VALUE_INT;
+
+    for (size_t i = 0; i < MANY_TRIES_SIZE_T; i++) {
+        status = vector_pop_back(vec, &popped_value);
+        assert(status == VEC_ERR_EMPTY);
+        assert(popped_value == INIT_RES_VALUE_INT);
+
+        status = vector_size(vec, &size);
+        assert(status == VEC_OK);
+        assert(size == INIT_VEC_SIZE);
+
+        status = vector_capacity(vec, &capacity);
+        assert(status == VEC_OK);
+        assert(capacity == INIT_VEC_CAPACITY);
+    }
+
+    int test_value = 43243;
+    status = vector_push_back(vec, test_value);
+    assert(status == VEC_OK);
+
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == 1);
+
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == INIT_VEC_CAPACITY);
+
+    status = vector_pop_back(vec, &popped_value);
+    assert(status == VEC_OK);
+    assert(popped_value == test_value);
+
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == 0);
+
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == INIT_VEC_CAPACITY);
+
+    vector_destroy(vec);
+    vec = NULL;
+}
+
+/**
+  * @brief  Test push and pop many elements.
+  */
+static void test_vector_many_pop_back(void)
+{
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+
+    vector_status_t status = VEC_ERR_NOMEM;
+    size_t size            = INIT_SIZE_T;
+
+    for (size_t i = 0; i < MANY_PUSHES_SIZE_T; i++) {
+        status = vector_push_back(vec, (int)i);
+        assert(status == VEC_OK);
+    }
+
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == MANY_PUSHES_SIZE_T);
+
+    int value = INIT_RES_VALUE_INT;
+    for (size_t i = MANY_PUSHES_SIZE_T; i > 0; i--) {
+        status = vector_pop_back(vec, &value);
+        assert(status == VEC_OK);
+        assert(value == (int)(i - 1));
+    }
+
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == 0);
+
+    /* try to get elements from empty vector */
+    for (size_t i = 0; i < MANY_PUSHES_SIZE_T; i++) {
+        value = INIT_RES_VALUE_INT;
+        status = vector_get(vec, i, &value);
+        assert(status == VEC_ERR_RANGE);
+        assert(value == INIT_RES_VALUE_INT);
+    }
+
+    /* pop does not release allocated memory */
+    status = VEC_ERR_NOMEM;
+    size_t capacity = INIT_SIZE_T;
+    
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == expected_capacity(MANY_PUSHES_SIZE_T));
+
+    vector_destroy(vec);
+    vec = NULL;
+}
+
+/**
+  * @brief  Test vector reuse after emptying.
+  */
+static void test_vector_use_after_empty(void)
+{
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+
+    int test_values[4]      = {46, 7546, 23412, 9850};
+    size_t test_values_size = (sizeof(test_values) / sizeof(test_values[0]));
+    vector_status_t status  = VEC_ERR_NOMEM;
+    
+    for (size_t i = 0; i < test_values_size; i++) {
+        status = vector_push_back(vec, test_values[i]);
+        assert(status == VEC_OK);
+    }
+
+    size_t size     = INIT_SIZE_T;
+    size_t capacity = INIT_SIZE_T;
+
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == test_values_size);
+
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == expected_capacity(test_values_size));
+
+    /* check if vector behaves as a LIFO queue */
+    int value = INIT_RES_VALUE_INT;
+
+    for (size_t i = test_values_size; i > 0; i--) {
+        status = vector_pop_back(vec, &value);
+        assert(status == VEC_OK);
+        assert(value == test_values[i - 1]);
+    
+        status = vector_size(vec, &size);
+        assert(status == VEC_OK);
+        assert(size == (i - 1));
+
+        status = vector_capacity(vec, &capacity);
+        assert(status == VEC_OK);
+        assert(capacity == expected_capacity(test_values_size));
+
+        status   = VEC_ERR_NOMEM;
+        size     = INIT_SIZE_T;
+        capacity = INIT_SIZE_T;
+        value    = INIT_RES_VALUE_INT;
+    }
+
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == 0);
+
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == expected_capacity(test_values_size));
+
+    value = INIT_RES_VALUE_INT;
+    status = vector_get(vec, 0, &value);
+    assert(status == VEC_ERR_RANGE);
+    assert(value == INIT_RES_VALUE_INT);
+
+    /* reuse the vector */
+    int new_values[3]      = {1234, 9000, 2};
+    size_t new_values_size = (sizeof(new_values) / sizeof(new_values[0]));
+    
+    for (size_t i = 0; i < new_values_size; i++) {
+        status = vector_push_back(vec, new_values[i]);
+        assert(status == VEC_OK);
+    }
+
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == new_values_size);
+
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == expected_capacity(new_values_size));
+
+    status = VEC_ERR_NOMEM;
+    value  = INIT_RES_VALUE_INT;
+    for (size_t i = 0; i < new_values_size; i++) {
+        status = vector_get(vec, i, &value);
+        assert(status == VEC_OK);
+        assert(value == new_values[i]);
+
+        status = VEC_ERR_NOMEM;
+        value  = INIT_RES_VALUE_INT;
+    }
+
+    status = vector_get(vec, new_values_size, &value);
+    assert(status == VEC_ERR_RANGE);
+    assert(value == INIT_RES_VALUE_INT);
+
+    vector_destroy(vec);
+    vec = NULL;
+}
+
 /* Get tests -----------------------------------------------------------------*/
 /**
   * @brief  Test get element via null vector or to null pointer. 
@@ -678,6 +1041,13 @@ int main(void)
     test_vector_push_one_element();
     test_vector_growth_boundary();
     test_vector_push_limits();
+
+    /* Vector pop tests */
+    test_null_vector_pop();
+    test_vector_pop_one_element();
+    test_vector_pop_from_empty();
+    test_vector_many_pop_back();
+    test_vector_use_after_empty();
     
     /* Vector get tests */
     test_null_vector_get();
