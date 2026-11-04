@@ -896,10 +896,277 @@ static void test_vector_get_from_empty(void)
     vec = NULL;
 }
 
-/* TODO: test realloc fail */
+/* Set tests -----------------------------------------------------------------*/
+/**
+  * @brief  Test set element in NULL vector. 
+  */
+static void test_null_vector_set(void)
+{
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+
+    vector_status_t status = VEC_ERR_NOMEM;
+    size_t size            = INIT_SIZE_T;
+    size_t capacity        = INIT_SIZE_T;
+    int test_value         = 57;
+    int value              = INIT_RES_VALUE_INT;
+
+    status = vector_push_back(vec, test_value);
+    assert(status == VEC_OK);
+
+    /* check vector properties before causing set error */
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == 1);
+
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == INIT_VEC_CAPACITY);
+
+    status = vector_get(vec, 0, &value);
+    assert(status == VEC_OK);
+    assert(value == test_value);
+
+    status   = VEC_ERR_NOMEM;
+    size     = INIT_SIZE_T;
+    capacity = INIT_SIZE_T;
+    value    = INIT_RES_VALUE_INT;
+
+    /* vector set failure on NULL pointer */
+    int new_value = 85479;
+    
+    status = vector_set(NULL, 0, new_value);
+    assert(status == VEC_ERR_NULL);
+
+    /* vector should remain untouched */
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == 1);
+
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == INIT_VEC_CAPACITY);
+
+    value = INIT_RES_VALUE_INT;
+    status = vector_get(vec, 0, &value);
+    assert(status == VEC_OK);
+    assert(value == test_value);
+
+    value = INIT_RES_VALUE_INT;
+    status = vector_get(vec, 1, &value);
+    assert(status == VEC_ERR_RANGE);
+    assert(value == INIT_RES_VALUE_INT);
+
+    vector_destroy(vec);
+    vec = NULL;
+}
 
 /**
-  * @brief Test independence of two vectors.
+  * @brief  Test set element in empty vector.
+  */
+static void test_empty_vector_set(void)
+{
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+
+    vector_status_t status = VEC_ERR_NOMEM;
+    int new_value          = 52314;
+
+    for (size_t i = 0; i < MANY_TRIES_SIZE_T; i++) {
+        status = vector_set(vec, i, new_value);
+        assert(status == VEC_ERR_RANGE);
+
+        status = VEC_ERR_NOMEM;
+    }
+
+    size_t size = INIT_SIZE_T;
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == 0);
+
+    size_t capacity = INIT_SIZE_T;
+    status = VEC_ERR_NOMEM;
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == INIT_VEC_CAPACITY);
+
+    vector_destroy(vec);
+    vec = NULL;
+}
+
+/**
+  * @brief  Test set edge elements.
+  */
+static void test_vector_set_edge_elements(void)
+{
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+
+    int test_values[6]     = {4, 213, 53, 697, 235, 99992};
+    size_t test_val_size   = (sizeof(test_values) / sizeof(test_values[0]));
+    vector_status_t status = VEC_ERR_NOMEM;
+    size_t size            = INIT_SIZE_T;
+    size_t capacity        = INIT_SIZE_T;
+    int value              = INIT_RES_VALUE_INT;
+
+    for (size_t i = 0; i < test_val_size; i++) {
+        status = vector_push_back(vec, test_values[i]);
+        assert(status == VEC_OK);
+
+        status = VEC_ERR_NOMEM;
+    }
+
+    for (size_t i = 0; i < test_val_size; i++) {
+        status = vector_get(vec, i, &value);
+        assert(status == VEC_OK);
+        assert(value == test_values[i]);
+
+        status = VEC_ERR_NOMEM;
+        value  = INIT_RES_VALUE_INT;
+    }
+
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == test_val_size);
+
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == expected_capacity(test_val_size));
+
+    /* update test values array - values should match after sets */
+    size_t start_index       = 0;
+    int new_start_val        = 111111;
+    test_values[start_index] = new_start_val;
+    
+    status = VEC_ERR_NOMEM;
+    status = vector_set(vec, start_index, new_start_val);
+    assert(status == VEC_OK);
+
+    size_t mid_index         = 2;
+    int new_mid_val          = 222222;
+    test_values[mid_index]   = new_mid_val;
+
+    status = VEC_ERR_NOMEM;
+    status = vector_set(vec, mid_index, new_mid_val);
+    assert(status == VEC_OK);
+
+    size_t end_index         = test_val_size - 1;
+    int new_end_val          = 777777;
+    test_values[end_index]   = new_end_val;
+
+    status = VEC_ERR_NOMEM;
+    status = vector_set(vec, end_index, new_end_val);
+    assert(status == VEC_OK);
+    
+    /* try to set beyond the range */
+    status = VEC_ERR_NOMEM;
+    status = vector_set(vec, test_val_size, 88888);
+    assert(status == VEC_ERR_RANGE);
+    
+    /* check if new values were set correctly */
+    status = VEC_ERR_NOMEM;
+    value  = INIT_RES_VALUE_INT;
+    
+    for (size_t i = 0; i < test_val_size; i++) {
+        status = vector_get(vec, i, &value);
+        assert(status == VEC_OK);
+        assert(value == test_values[i]);
+
+        status = VEC_ERR_NOMEM;
+        value  = INIT_RES_VALUE_INT;
+    }
+
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == test_val_size);
+
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == expected_capacity(test_val_size));
+
+    vector_destroy(vec);
+    vec = NULL;
+}
+
+/* Clear tests ---------------------------------------------------------------*/
+/**
+  * @brief  Test vector clear on null pointer.
+  */
+static void test_null_vector_clear(void)
+{
+    vector_status_t status = VEC_ERR_NOMEM;
+    status = vector_clear(NULL);
+    assert(status == VEC_ERR_NULL);
+}
+
+/**
+  * @brief  Test vector clear on big vector.
+  */
+static void test_big_vector_clear(void)
+{
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+
+    /* push many elements */
+    vector_status_t status = VEC_ERR_NOMEM;
+    for (size_t i = 0; i < MANY_PUSHES_SIZE_T; i++) {
+        status = vector_push_back(vec, (int)i);
+        assert(status == VEC_OK);
+        status = VEC_ERR_NOMEM;
+    }
+
+    /* check size and capacity */
+    size_t size = INIT_SIZE_T;
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == MANY_PUSHES_SIZE_T);
+
+    status = VEC_ERR_NOMEM;
+    size_t capacity = INIT_SIZE_T;
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == expected_capacity(MANY_PUSHES_SIZE_T));
+
+    /* clear the vector - expected size is 0, capacity untouched */
+    status = VEC_ERR_NOMEM;
+    status = vector_clear(vec);
+    assert(status == VEC_OK);
+
+    status = VEC_ERR_NOMEM;
+    size = INIT_SIZE_T;
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == 0);
+
+    status = VEC_ERR_NOMEM;
+    capacity = INIT_SIZE_T;
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == expected_capacity(MANY_PUSHES_SIZE_T));
+
+    /* try to clear empty vector */
+    status = VEC_ERR_NOMEM;
+    status = vector_clear(vec);
+    assert(status == VEC_OK);
+
+    status = VEC_ERR_NOMEM;
+    size = INIT_SIZE_T;
+    status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == 0);
+
+    status = VEC_ERR_NOMEM;
+    capacity = INIT_SIZE_T;
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == expected_capacity(MANY_PUSHES_SIZE_T));
+
+    vector_destroy(vec);
+    vec = NULL;
+}
+
+/**
+  * @brief  Test independence of two vectors.
   */
 static void test_two_vectors(void)
 {
@@ -1053,6 +1320,15 @@ int main(void)
     test_null_vector_get();
     test_vector_get_one_element();
     test_vector_get_from_empty();
+
+    /* Vector set tests */
+    test_null_vector_set();
+    test_empty_vector_set();
+    test_vector_set_edge_elements();
+
+    /* Vector clear tests */
+    test_null_vector_clear();
+    test_big_vector_clear();
 
     /* Two vectors test */
     test_two_vectors();

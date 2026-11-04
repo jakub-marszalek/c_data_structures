@@ -57,7 +57,7 @@ vector_status_t vector_capacity(const vector_t *vec, size_t *output);
   * @param   value  Value that will be stored in vector data.
   * @retval  vector_status_t  VEC_OK on success, VEC_ERR_NULL or VEC_ERR_NOMEM on failure.
   */
-vector_status_t vector_push_back(vector_t *vec, int value);
+vector_status_t vector_push_back(vector_t *vec, const int value);
 
 /**
   * @brief   Pop last element of the data block.
@@ -75,6 +75,27 @@ vector_status_t vector_pop_back(vector_t *vec, int *output);
   * @retval  vector_status_t  VEC_OK on success, VEC_ERR_NULL or VEC_ERR_RANGE on failure.
   */
 vector_status_t vector_get(const vector_t *vec, const size_t index, int *output);
+
+/**
+  * @brief   Set vector data by index.
+  * @param   vec    Pointer to the vector.
+  * @param   index  Index of vector data field to be set.
+  * @param   value  Value to be set at given index.
+  * @note    This function updates the value of already existing element. Function does NOT
+  *          allocate new space in memory or append elements; index must be within the bounds
+  *          of the vector size (0 to size - 1).
+  * @retval  vector_status_t  VEC_OK on success, VEC_ERR_NULL or VEC_ERR_RANGE on failure.
+  */
+vector_status_t vector_set(vector_t *vec, const size_t index, const int value);
+
+/**
+  * @brief   Clear vector data.
+  * @param   vec  Pointer to the vector.
+  * @note    Sets size to 0. This function does NOT change vector capacity.
+  *          Clearing an already empty vector is not an error.
+  * @retval  vector_status_t  VEC_OK on success, VEC_ERR_NULL on failure.
+  */
+vector_status_t vector_clear(vector_t *vec);
 
 /**
   * @brief  Release the vector and its data.

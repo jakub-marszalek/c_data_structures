@@ -127,6 +127,30 @@ vector_status_t vector_get(const vector_t *vec, const size_t index, int *output)
     return VEC_OK;
 }
 
+vector_status_t vector_set(vector_t *vec, const size_t index, const int value)
+{
+    if (NULL == vec) {
+        return VEC_ERR_NULL;
+    }
+
+    if (index >= vec->size) {
+        return VEC_ERR_RANGE;
+    }
+
+    vec->data[index] = value;
+    return VEC_OK;
+}
+
+vector_status_t vector_clear(vector_t *vec)
+{
+    if (NULL == vec) {
+        return VEC_ERR_NULL;
+    }
+
+    vec->size = 0;    
+    return VEC_OK;
+}
+
 void vector_destroy(vector_t *vec)
 {
     if (NULL == vec) {
