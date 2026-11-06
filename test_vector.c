@@ -15,6 +15,10 @@
 #include "vector.h"
 
 /* Private defines -----------------------------------------------------------*/
+#ifdef NDEBUG
+    #error "Tests require assert(); do not build them with -DNDEBUG"
+#endif
+
 #define CAP_MULTIPLIER      (2)
 #define INIT_RES_VALUE_INT  (-999)
 #define INIT_SIZE_T         (99999)
@@ -101,6 +105,49 @@ static void run_insert_no_realloc_test(
     status = vector_capacity(vec, &capacity_after);
     assert(status == VEC_OK);
     assert(capacity_before == capacity_after);
+
+    vector_destroy(vec);
+    vec = NULL;
+}
+
+static void run_remove_test(
+    const int *initial,
+    const size_t initial_size,
+    const size_t index,
+    const int *expected,
+    const size_t expected_size
+) {
+    assert(NULL != initial);
+    assert(expected_size == 0 || NULL != expected);
+    assert(expected_size == initial_size - 1);
+
+    vector_t *vec = vector_create();
+    assert(NULL != vec);    
+
+    vector_status_t status = VEC_ERR_NOMEM;
+    for (size_t i = 0; i < initial_size; i++) {
+        status = vector_push_back(vec, initial[i]);
+        assert(status == VEC_OK);
+    }
+    assert_size_equals(vec, initial_size);
+
+    size_t capacity_before = INIT_SIZE_T;
+    status = vector_capacity(vec, &capacity_before);
+    assert(status == VEC_OK);
+    assert(capacity_before == expected_capacity(initial_size));
+
+    /* remove one element at given index */
+    int value = INIT_RES_VALUE_INT;
+    status = vector_remove(vec, index, &value);
+    assert(status == VEC_OK);
+    assert(value == initial[index]);
+    assert_vector_equals(vec, expected, expected_size);
+
+    /* capacity should not change after removing value */
+    size_t capacity_after = INIT_SIZE_T;
+    status = vector_capacity(vec, &capacity_after);
+    assert(status == VEC_OK);
+    assert(capacity_after == expected_capacity(initial_size));
 
     vector_destroy(vec);
     vec = NULL;
@@ -1322,6 +1369,189 @@ static void test_vector_insert_with_realloc(void)
     vec = NULL;
 }
 
+/* Remove tests --------------------------------------------------------------*/
+/**
+  * @brief  Test vector remove on null pointer.
+  */
+static void test_null_vector_remove(void)
+{
+    vector_status_t status = vector_remove(NULL, 0, NULL);
+    assert(status == VEC_ERR_NULL);
+
+    int removed = INIT_RES_VALUE_INT;
+    status = vector_remove(NULL, 0, &removed);
+    assert(status == VEC_ERR_NULL);
+    assert(removed == INIT_RES_VALUE_INT);
+
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+
+    const int expected[]       = {4, 3, 7};
+    const size_t expected_size = sizeof(expected) / sizeof(expected[0]);
+
+    for (size_t i = 0; i < expected_size; i++) {
+        status = vector_push_back(vec, expected[i]);
+        assert(status == VEC_OK);
+    }
+    assert_size_equals(vec, expected_size);
+
+    status = vector_remove(vec, 0, NULL);
+    assert(status == VEC_ERR_NULL);
+    assert_vector_equals(vec, expected, expected_size);
+
+    vector_destroy(vec);
+    vec = NULL;
+}
+
+/**
+  * @brief  Test vector remove on empty vector.
+  */
+static void test_empty_vector_remove(void)
+{
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+    
+    vector_status_t status = VEC_ERR_NOMEM;
+    int test_value         = INIT_RES_VALUE_INT;
+
+    for (size_t i = 0; i < MANY_TRIES_SIZE_T; i++) {
+        status = vector_remove(vec, 0, &test_value);
+        assert(status == VEC_ERR_EMPTY);
+        assert(test_value == INIT_RES_VALUE_INT);
+    }
+    assert_size_equals(vec, 0);
+
+    vector_destroy(vec);
+    vec = NULL;
+}
+
+/**
+  * @brief  Test vector remove outside of range.
+  */
+static void test_vector_remove_outside_of_range(void)
+{
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+    
+    const int initial[]       = {3, 6, 1, 2, 6, 4};
+    const size_t initial_size = sizeof(initial) / sizeof(initial[0]);
+    vector_status_t status    = VEC_ERR_NOMEM;
+
+    for (size_t i = 0; i < initial_size; i++) {
+        status = vector_push_back(vec, initial[i]);
+        assert(status == VEC_OK);
+    }
+    assert_size_equals(vec, initial_size);
+
+    const size_t invalid_indexes[] = {initial_size, initial_size + 1, SIZE_MAX};
+    const size_t inv_indexes_size  = sizeof(invalid_indexes) / sizeof(invalid_indexes[0]);
+
+    for (size_t i = 0; i < inv_indexes_size; i++) {
+        int test_value = INIT_RES_VALUE_INT;
+
+        status = vector_remove(vec, invalid_indexes[i], &test_value);
+        assert(status == VEC_ERR_RANGE);
+        assert(test_value == INIT_RES_VALUE_INT);
+        assert_vector_equals(vec, initial, initial_size);
+    }
+
+    vector_destroy(vec);
+    vec = NULL;
+}
+
+/**
+  * @brief  Test vector remove at the first index.
+  */
+static void test_vector_remove_at_first(void)
+{
+    const int initial[]  = {4, 5, 6, 7, 8};
+    const int expected[] = {   5, 6, 7, 8};
+    const size_t initial_size  = sizeof(initial) / sizeof(initial[0]);
+    const size_t expected_size = sizeof(expected) / sizeof(expected[0]);
+
+    run_remove_test(initial, initial_size, 0, expected, expected_size);
+}
+
+/**
+  * @brief  Test vector remove at the middle index.
+  */
+static void test_vector_remove_at_middle(void)
+{
+    const int initial[]  = {4, 5, 6, 7, 8, 1, 23};
+    const int expected[] = {4, 5,    7, 8, 1, 23};
+    const size_t initial_size  = sizeof(initial) / sizeof(initial[0]);
+    const size_t expected_size = sizeof(expected) / sizeof(expected[0]);
+
+    run_remove_test(initial, initial_size, 2, expected, expected_size);
+}
+
+/**
+  * @brief  Test vector remove at the last index.
+  */
+static void test_vector_remove_at_end(void)
+{
+    const int initial[]  = {4, 5, 6, 7, 8, 1, 23, 9};
+    const int expected[] = {4, 5, 6, 7, 8, 1, 23   };
+    const size_t initial_size  = sizeof(initial) / sizeof(initial[0]);
+    const size_t expected_size = sizeof(expected) / sizeof(expected[0]);
+
+    run_remove_test(initial, initial_size, initial_size - 1, expected, expected_size);
+}
+
+/**
+  * @brief  Test vector remove when only one element exists.
+  */
+static void test_vector_remove_only_element(void)
+{
+    const int initial[]        = {95};
+    const size_t initial_size  = sizeof(initial) / sizeof(initial[0]);
+
+    run_remove_test(initial, initial_size, 0, NULL, 0);
+}
+
+/**
+  * @brief  Test vector remove many elements.
+  */
+static void test_vector_remove_many(void)
+{
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+
+    vector_status_t status = VEC_ERR_NOMEM;
+    for (size_t i = 0; i < MANY_PUSHES_SIZE_T; i++) {
+        status = vector_push_back(vec, (int)i);
+        assert(status == VEC_OK);
+    }
+    assert_size_equals(vec, MANY_PUSHES_SIZE_T);
+
+    size_t capacity_before = INIT_SIZE_T;
+    status = vector_capacity(vec, &capacity_before);
+    assert(status == VEC_OK);
+    assert(capacity_before == expected_capacity(MANY_PUSHES_SIZE_T));
+
+    for (size_t i = 0; i < MANY_PUSHES_SIZE_T; i++) {
+        int value = INIT_RES_VALUE_INT;
+        status = vector_remove(vec, 0, &value);
+        assert(status == VEC_OK);
+        assert(value == (int)i);
+    }
+    assert_size_equals(vec, 0);
+
+    size_t capacity_after = INIT_SIZE_T;
+    status = vector_capacity(vec, &capacity_after);
+    assert(status == VEC_OK);
+    assert(capacity_after == expected_capacity(MANY_PUSHES_SIZE_T));
+
+    /* try to remove from empty vector */
+    int value = INIT_RES_VALUE_INT;
+    status = vector_remove(vec, 0, &value);
+    assert(status == VEC_ERR_EMPTY);
+    assert(value == INIT_RES_VALUE_INT);
+
+    vector_destroy(vec);
+    vec = NULL;
+}
+
 /* Clear tests ---------------------------------------------------------------*/
 /**
   * @brief  Test vector clear on null pointer.
@@ -1568,6 +1798,16 @@ int main(void)
     test_vector_insert_at_middle();
     test_vector_insert_at_end();
     test_vector_insert_with_realloc(); 
+
+    /* Vector remove tests */
+    test_null_vector_remove();
+    test_empty_vector_remove();
+    test_vector_remove_outside_of_range();
+    test_vector_remove_at_first();
+    test_vector_remove_at_middle();
+    test_vector_remove_at_end();
+    test_vector_remove_only_element();
+    test_vector_remove_many();
 
     /* Vector clear tests */
     test_null_vector_clear();

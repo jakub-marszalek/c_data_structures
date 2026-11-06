@@ -191,6 +191,27 @@ vector_status_t vector_insert(vector_t *vec, const size_t index, const int value
     return VEC_OK;
 }
 
+vector_status_t vector_remove(vector_t *vec, const size_t index, int *removed)
+{
+    if (NULL == vec || NULL == removed) {
+        return VEC_ERR_NULL;
+    }
+
+    if (vec->size == 0) {
+        return VEC_ERR_EMPTY;
+    }
+
+    if (index >= vec->size) {
+        return VEC_ERR_RANGE;
+    }
+
+    *removed = vec->data[index];
+    memmove(&vec->data[index], &vec->data[index + 1], sizeof(int) * (vec->size - index - 1));
+    vec->size--;
+
+    return VEC_OK;
+}
+
 vector_status_t vector_clear(vector_t *vec)
 {
     if (NULL == vec) {

@@ -11,7 +11,7 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
-/* Private includes ----------------------------------------------------------*/
+/* Includes ----------------------------------------------------------*/
 #include <stddef.h>
 
 /* Exported typedef ----------------------------------------------------------*/
@@ -23,7 +23,7 @@ typedef struct vector_t vector_t;
   *        check returned status code.
   **/
 typedef enum {
-    VEC_OK = 0,     /* Operation executed succesfully   */
+    VEC_OK = 0,     /* Operation executed successfully  */
     VEC_ERR_EMPTY,  /* Given vector is empty            */
     VEC_ERR_NOMEM,  /* Memory allocation failure        */
     VEC_ERR_NULL,   /* Given a NULL pointer             */
@@ -66,7 +66,7 @@ vector_status_t vector_push_back(vector_t *vec, const int value);
   * @brief   Pop last element of the data block.
   * @param   vec     Pointer to the vector.
   * @param   output  Value that has been popped.
-  * @retval  vecotr_status_t  VEC_OK on success, VEC_ERR_NULL or VEC_ERR_EMPTY on failure.
+  * @retval  vector_status_t  VEC_OK on success, VEC_ERR_NULL or VEC_ERR_EMPTY on failure.
   */
 vector_status_t vector_pop_back(vector_t *vec, int *output);
 
@@ -103,6 +103,20 @@ vector_status_t vector_set(vector_t *vec, const size_t index, const int value);
   *                           on failure.
   */
 vector_status_t vector_insert(vector_t *vec, const size_t index, const int value);
+
+/**
+  * @brief   Remove value at given index.
+  * @param   vec      Pointer to the vector.
+  * @param   index    Position of the element to be removed, in range 0 to size - 1.
+  * @param   removed  Element that has been removed.
+  * @note    Elements from index to the end are shifted one position to the left to fill the gap.
+  *          Removing at index equal to size - 1 pops the last value (same as vector_pop_back()).
+  *          Trying to remove from empty vector will always return VEC_ERR_EMPTY. Function does NOT 
+  *          change vector capacity. On failure, both vector and removed value remain untouched.
+  * @retval  vector_status_t  VEC_OK on success, VEC_ERR_NULL, VEC_ERR_EMPTY or VEC_ERR_RANGE
+  *                           on failure.
+  */
+vector_status_t vector_remove(vector_t *vec, const size_t index, int *removed);
 
 /**
   * @brief   Clear vector data.
