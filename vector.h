@@ -11,6 +11,9 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
+/* Private includes ----------------------------------------------------------*/
+#include <stddef.h>
+
 /* Exported typedef ----------------------------------------------------------*/
 typedef struct vector_t vector_t;
 
@@ -87,6 +90,19 @@ vector_status_t vector_get(const vector_t *vec, const size_t index, int *output)
   * @retval  vector_status_t  VEC_OK on success, VEC_ERR_NULL or VEC_ERR_RANGE on failure.
   */
 vector_status_t vector_set(vector_t *vec, const size_t index, const int value);
+
+/**
+  * @brief   Insert new value at given index.
+  * @param   vec    Pointer to the vector.
+  * @param   index  Position of the new element, in range 0 to size (inclusive).
+  * @param   value  Value to be inserted.
+  * @note    Elements from index to the end are shifted one position to the right.
+  *          Inserting at index equal to size appends the value (same as vector_push_back()).
+  *          May reallocate the data block. On failure the vector is left unchanged.
+  * @retval  vector_status_t  VEC_OK on success, VEC_ERR_NULL, VEC_ERR_RANGE or VEC_ERR_NOMEM
+  *                           on failure.
+  */
+vector_status_t vector_insert(vector_t *vec, const size_t index, const int value);
 
 /**
   * @brief   Clear vector data.

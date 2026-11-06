@@ -9,6 +9,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 #include <stdio.h>
+#include <stdint.h>
 #include <assert.h>
 #include <limits.h>
 #include "vector.h"
@@ -23,7 +24,8 @@
 #define MANY_TRIES_SIZE_T   (100000)
 #define VEC_A_ARR_SIZE      (3)
 #define VEC_B_ARR_SIZE      (2)
-#define POP_TEST_VEC_SIZE   (7)
+#define TEST_VEC_SIZE       (7)
+#define INSERT_TEST_VALUE   (999)
 
 /* Helpers -------------------------------------------------------------------*/
 static size_t expected_capacity(size_t size)
@@ -33,6 +35,75 @@ static size_t expected_capacity(size_t size)
         cap *= CAP_MULTIPLIER;
     }
     return cap;
+}
+
+static void assert_vector_equals(const vector_t *vec, const int *expected, const size_t n)
+{
+    assert(NULL != vec);
+    assert(n == 0 || NULL != expected);
+    
+    size_t size = INIT_SIZE_T;
+    vector_status_t status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == n);
+
+    for (size_t i = 0; i < n; i++) {
+        int value = INIT_RES_VALUE_INT;
+
+        status = vector_get(vec, i, &value);
+        assert(status == VEC_OK);
+        assert(value == expected[i]);
+    }
+}
+
+static void assert_size_equals(const vector_t *vec, const size_t expected)
+{
+    assert(NULL != vec);
+
+    size_t size = INIT_SIZE_T;
+    vector_status_t status = vector_size(vec, &size);
+    assert(status == VEC_OK);
+    assert(size == expected);
+}
+
+static void run_insert_no_realloc_test(
+    const int *initial,
+    const size_t initial_size,
+    const size_t index,
+    const int *expected,
+    const size_t expected_size
+) {
+    assert(initial_size == 0 || NULL != initial);
+    assert(NULL != expected);
+    assert(expected_size == initial_size + 1);
+
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+
+    vector_status_t status = VEC_ERR_NOMEM;
+    for (size_t i = 0; i < initial_size; i++) {
+        status = vector_push_back(vec, initial[i]);
+        assert(status == VEC_OK);
+    }
+    assert_size_equals(vec, initial_size);
+
+    size_t capacity_before = INIT_SIZE_T;
+    status = vector_capacity(vec, &capacity_before);
+    assert(status == VEC_OK);
+    assert(capacity_before > initial_size);
+
+    /* insert new value at given index */
+    status = vector_insert(vec, index, INSERT_TEST_VALUE);
+    assert(status == VEC_OK);
+    assert_vector_equals(vec, expected, expected_size);
+    
+    size_t capacity_after = INIT_SIZE_T;
+    status = vector_capacity(vec, &capacity_after);
+    assert(status == VEC_OK);
+    assert(capacity_before == capacity_after);
+
+    vector_destroy(vec);
+    vec = NULL;
 }
 
 /* Create destroy tests ------------------------------------------------------*/
@@ -507,7 +578,7 @@ static void test_vector_pop_one_element(void)
     size_t capacity        = INIT_SIZE_T;
     int last_value         = INIT_RES_VALUE_INT;
 
-    for (size_t i = 0; i < POP_TEST_VEC_SIZE; i++) {
+    for (size_t i = 0; i < TEST_VEC_SIZE; i++) {
         status = vector_push_back(vec, (int)i);
         assert(status == VEC_OK);
 
@@ -516,9 +587,9 @@ static void test_vector_pop_one_element(void)
 
     status = vector_size(vec, &size);
     assert(status == VEC_OK);
-    assert(size == POP_TEST_VEC_SIZE);
+    assert(size == TEST_VEC_SIZE);
     
-    size_t expected_cap = expected_capacity(POP_TEST_VEC_SIZE);
+    size_t expected_cap = expected_capacity(TEST_VEC_SIZE);
     status = vector_capacity(vec, &capacity);
     assert(status == VEC_OK);
     assert(capacity == expected_cap);
@@ -533,7 +604,7 @@ static void test_vector_pop_one_element(void)
     /* check size after pop */
     status = vector_size(vec, &size);
     assert(status == VEC_OK);
-    assert(size == POP_TEST_VEC_SIZE - 1);
+    assert(size == TEST_VEC_SIZE - 1);
 
     /* check capacity - should not change after pop */
     status = vector_capacity(vec, &capacity);
@@ -543,12 +614,12 @@ static void test_vector_pop_one_element(void)
     /* the popped element is gone; its index is out of range */
     int value = INIT_RES_VALUE_INT;
     
-    status = vector_get(vec, POP_TEST_VEC_SIZE - 1, &value);
+    status = vector_get(vec, TEST_VEC_SIZE - 1, &value);
     assert(status == VEC_ERR_RANGE);
     assert(value == INIT_RES_VALUE_INT);
 
     /* element right before it is untouched */
-    status = vector_get(vec, POP_TEST_VEC_SIZE - 2, &value);
+    status = vector_get(vec, TEST_VEC_SIZE - 2, &value);
     assert(status == VEC_OK);
     assert(value == last_value - 1);
 
@@ -1088,6 +1159,169 @@ static void test_vector_set_edge_elements(void)
     vec = NULL;
 }
 
+/* Insert tests --------------------------------------------------------------*/
+/**
+  * @brief  Test vector insert on null pointer.
+  */
+static void test_null_vector_insert(void)
+{
+    vector_status_t status = VEC_ERR_NOMEM;
+    status = vector_insert(NULL, 0, INSERT_TEST_VALUE);
+    assert(status == VEC_ERR_NULL);
+}
+
+/**
+  * @brief  Test vector insert on empty vector.
+  */
+static void test_vector_insert_into_empty(void)
+{
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+    
+    vector_status_t status = vector_insert(vec, 1, INSERT_TEST_VALUE);
+    assert(status == VEC_ERR_RANGE);
+    assert_vector_equals(vec, NULL, 0);
+
+    /* index == 0, works as an append (vector_push_back())*/
+    const int expected[]       = {INSERT_TEST_VALUE};
+    const size_t expected_size = sizeof(expected) / sizeof(expected[0]);
+
+    status = vector_insert(vec, 0, INSERT_TEST_VALUE);
+    assert(status == VEC_OK);
+    assert_vector_equals(vec, expected, expected_size);
+
+    size_t capacity = INIT_SIZE_T;
+    status = vector_capacity(vec, &capacity);
+    assert(status == VEC_OK);
+    assert(capacity == INIT_VEC_CAPACITY);
+
+    vector_destroy(vec);
+    vec = NULL;
+}
+
+/**
+  * @brief  Test vector insert outside of range.
+  */
+static void test_vector_insert_outside_of_range(void)
+{
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+
+    vector_status_t status = VEC_ERR_NOMEM;
+    int vector_data[TEST_VEC_SIZE];
+    
+    for (size_t i = 0; i < TEST_VEC_SIZE; i++) {
+        status = vector_push_back(vec, (int)i);
+        assert(status == VEC_OK);
+        vector_data[i] = (int)i; 
+    }
+
+    /* insert outside of range return error - vector remains untouched */
+    status = vector_insert(vec, TEST_VEC_SIZE + 1, INSERT_TEST_VALUE);
+    assert(status == VEC_ERR_RANGE);
+    assert_vector_equals(vec, vector_data, TEST_VEC_SIZE);
+
+    status = vector_insert(vec, SIZE_MAX, INSERT_TEST_VALUE);
+    assert(status == VEC_ERR_RANGE);
+    assert_vector_equals(vec, vector_data, TEST_VEC_SIZE);
+
+    vector_destroy(vec);
+    vec = NULL;
+}
+
+/**
+  * @brief  Test vector insert at the first index.
+  */
+static void test_vector_insert_at_first(void)
+{
+    const int initial[]  =                    {2, 3, 4, 5, 6, 7, 8};
+    const int expected[] = {INSERT_TEST_VALUE, 2, 3, 4, 5, 6, 7, 8};
+    const size_t initial_size  = sizeof(initial) / sizeof(initial[0]);
+    const size_t expected_size = sizeof(expected) / sizeof(expected[0]);
+
+    run_insert_no_realloc_test(initial, initial_size, 0, expected, expected_size);
+}
+
+/**
+  * @brief  Test vector insert at the middle index.
+  */
+static void test_vector_insert_at_middle(void)
+{
+    const int initial[]  = {4, 5, 6, 7, 8};
+    const int expected[] = {4, 5, INSERT_TEST_VALUE, 6, 7, 8};
+    const size_t initial_size  = sizeof(initial) / sizeof(initial[0]);
+    const size_t expected_size = sizeof(expected) / sizeof(expected[0]);
+
+    run_insert_no_realloc_test(initial, initial_size, 2, expected, expected_size);
+}
+
+/**
+  * @brief  Test vector insert at the end index.
+  */
+static void test_vector_insert_at_end(void)
+{
+    const int initial[]  = {4, 5, 6, 7, 8};
+    const int expected[] = {4, 5, 6, 7, 8, INSERT_TEST_VALUE};
+    const size_t initial_size  = sizeof(initial) / sizeof(initial[0]);
+    const size_t expected_size = sizeof(expected) / sizeof(expected[0]);
+
+    run_insert_no_realloc_test(initial, initial_size, initial_size, expected, expected_size);
+}
+
+/**
+  * @brief  Test vector insert on full vector - realloc needed.
+  */
+static void test_vector_insert_with_realloc(void)
+{
+    vector_t *vec = vector_create();
+    assert(NULL != vec);
+
+    size_t capacity_before = INIT_SIZE_T;
+    vector_status_t status = vector_capacity(vec, &capacity_before);
+    assert(status == VEC_OK);
+    assert(capacity_before == INIT_VEC_CAPACITY);
+ 
+    /* fill the vector up to its capacity */
+    for (size_t i = 0; i < capacity_before; i++) {
+        status = vector_push_back(vec, (int)i);
+        assert(status == VEC_OK);
+    }
+    assert_size_equals(vec, capacity_before);
+
+    /* vector is full - insert at the middle -> realloc needed */
+    const size_t index = capacity_before / 2;
+    status = vector_insert(vec, index, INSERT_TEST_VALUE);
+    assert(status == VEC_OK);
+
+    size_t size_after = capacity_before + 1;
+    assert_size_equals(vec, size_after);
+
+    for (size_t i = 0; i < size_after; i++) {
+        int value    = INIT_RES_VALUE_INT;
+        int expected = INIT_RES_VALUE_INT;
+
+        if (i < index) {
+            expected = (int)i;
+        } else if (i == index) {
+            expected = INSERT_TEST_VALUE;
+        } else {
+            expected = (int)(i - 1);
+        }
+
+        status = vector_get(vec, i, &value);
+        assert(status == VEC_OK);
+        assert(value == expected);
+    }
+
+    size_t capacity_after = INIT_SIZE_T;
+    status = vector_capacity(vec, &capacity_after);
+    assert(status == VEC_OK);
+    assert(capacity_after == expected_capacity(size_after));
+
+    vector_destroy(vec);
+    vec = NULL;
+}
+
 /* Clear tests ---------------------------------------------------------------*/
 /**
   * @brief  Test vector clear on null pointer.
@@ -1325,6 +1559,15 @@ int main(void)
     test_null_vector_set();
     test_empty_vector_set();
     test_vector_set_edge_elements();
+
+    /* Vector insert tests */
+    test_null_vector_insert();
+    test_vector_insert_into_empty();
+    test_vector_insert_outside_of_range();
+    test_vector_insert_at_first();
+    test_vector_insert_at_middle();
+    test_vector_insert_at_end();
+    test_vector_insert_with_realloc(); 
 
     /* Vector clear tests */
     test_null_vector_clear();
