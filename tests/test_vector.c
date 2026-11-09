@@ -24,7 +24,7 @@
 #define INIT_SIZE_T         (99999)
 #define INIT_VEC_SIZE       (0)
 #define INIT_VEC_CAPACITY   (4)
-#define MANY_PUSHES_SIZE_T  (98909)
+#define MANY_PUSHES_SIZE_T  (100000)
 #define MANY_TRIES_SIZE_T   (100000)
 #define VEC_A_ARR_SIZE      (3)
 #define VEC_B_ARR_SIZE      (2)
@@ -201,7 +201,7 @@ static void test_null_vector_size_capacity(void)
 
     status = vector_capacity(NULL, &capacity);
     assert(status == VEC_ERR_NULL);
-    assert(size == INIT_SIZE_T);
+    assert(capacity == INIT_SIZE_T);
 
     /* create valid vector */
     vector_t *vec = vector_create();
