@@ -193,9 +193,9 @@ vector_status_t vector_insert(vector_t *vec, const size_t index, const int value
 
 vector_status_t vector_remove(vector_t *vec, const size_t index, int *removed)
 {
-    if (NULL == vec || NULL == removed) {
-        return VEC_ERR_NULL;
-    }
+    // if (NULL == vec || NULL == removed) {
+    //     return VEC_ERR_NULL;
+    // }
 
     if (vec->size == 0) {
         return VEC_ERR_EMPTY;
